@@ -44,6 +44,32 @@ st.markdown("""
         padding: 1rem;
         margin: 1rem 0;
     }
+    .chart-container {
+        background-color: #ffffff;
+        padding: 1.5rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin: 1rem 0;
+        border: 1px solid #e1e5e9;
+    }
+    .section-header {
+        color: #2c3e50;
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #3498db;
+    }
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+    .metric-label {
+        color: #7f8c8d;
+        font-size: 0.9rem;
+        margin-top: 0.25rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -266,8 +292,8 @@ def show_predictions():
                 st.plotly_chart(fig, use_container_width=True)
 
 def show_data_analysis():
-    """Show data analysis dashboard"""
-    st.header("📊 Data Analysis")
+    """Show data analysis dashboard with improved visual design"""
+    st.markdown('<h1 class="section-header">📊 Data Analysis</h1>', unsafe_allow_html=True)
     
     # Load raw data
     raw_data = load_raw_data()
@@ -277,66 +303,292 @@ def show_data_analysis():
     
     st.success(f"✅ Loaded {len(raw_data):,} records from Walmart dataset")
     
-    # Data overview
+    # Convert date column
+    raw_data['Date'] = pd.to_datetime(raw_data['Date'], format='%d-%m-%Y')
+    
+    # Key metrics overview
+    st.markdown("### 📈 Key Insights")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        avg_sales = raw_data['Weekly_Sales'].mean()
+        st.markdown(f"""
+        <div class="chart-container">
+            <div class="metric-value">${avg_sales:,.0f}</div>
+            <div class="metric-label">Average Weekly Sales</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        total_stores = raw_data['Store'].nunique()
+        st.markdown(f"""
+        <div class="chart-container">
+            <div class="metric-value">{total_stores}</div>
+            <div class="metric-label">Total Stores</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        holiday_impact = raw_data.groupby('Holiday_Flag')['Weekly_Sales'].mean()
+        impact_pct = ((holiday_impact[1] - holiday_impact[0]) / holiday_impact[0] * 100)
+        st.markdown(f"""
+        <div class="chart-container">
+            <div class="metric-value">+{impact_pct:.1f}%</div>
+            <div class="metric-label">Holiday Impact</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        date_range = (raw_data['Date'].max() - raw_data['Date'].min()).days
+        st.markdown(f"""
+        <div class="chart-container">
+            <div class="metric-value">{date_range}</div>
+            <div class="metric-label">Days of Data</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Sales Trends Section
+    st.markdown("### 📈 Sales Trends Over Time")
+    
+    # Time series with better styling
+    daily_sales = raw_data.groupby('Date')['Weekly_Sales'].sum().reset_index()
+    fig = px.line(daily_sales, x='Date', y='Weekly_Sales',
+                 title='Weekly Sales Trend',
+                 labels={'Weekly_Sales': 'Total Weekly Sales ($)', 'Date': 'Date'},
+                 color_discrete_sequence=['#3498db'])
+    
+    fig.update_layout(
+        height=500,
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(size=12),
+        title_font_size=16,
+        title_x=0.5
+    )
+    
+    fig.update_traces(
+        line=dict(width=3),
+        hovertemplate='<b>Date:</b> %{x}<br><b>Sales:</b> $%{y:,.0f}<extra></extra>'
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Store Performance Section
+    st.markdown("### 🏪 Store Performance Analysis")
+    
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("📈 Sales Trends")
+        # Top performing stores
+        top_stores = raw_data.groupby('Store')['Weekly_Sales'].sum().sort_values(ascending=False).head(10)
+        fig = px.bar(x=top_stores.index, y=top_stores.values,
+                    title='Top 10 Stores by Total Sales',
+                    labels={'x': 'Store ID', 'y': 'Total Sales ($)'},
+                    color=top_stores.values,
+                    color_continuous_scale='Blues')
         
-        # Convert date column
-        raw_data['Date'] = pd.to_datetime(raw_data['Date'], format='%d-%m-%Y')
+        fig.update_layout(
+            height=400,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            showlegend=False
+        )
         
-        # Time series plot
-        fig = px.line(raw_data.groupby('Date')['Weekly_Sales'].sum().reset_index(),
-                     x='Date', y='Weekly_Sales',
-                     title='Weekly Sales Over Time',
-                     labels={'Weekly_Sales': 'Total Weekly Sales ($)', 'Date': 'Date'})
-        fig.update_layout(height=400)
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        st.subheader("🏪 Store Performance")
-        
         # Store sales distribution
-        store_sales = raw_data.groupby('Store')['Weekly_Sales'].sum().reset_index()
-        fig = px.bar(store_sales, x='Store', y='Weekly_Sales',
-                    title='Total Sales by Store',
-                    labels={'Weekly_Sales': 'Total Sales ($)', 'Store': 'Store ID'})
-        fig.update_layout(height=400)
+        fig = px.histogram(raw_data, x='Weekly_Sales', nbins=30,
+                          title='Weekly Sales Distribution',
+                          labels={'Weekly_Sales': 'Weekly Sales ($)', 'count': 'Frequency'},
+                          color_discrete_sequence=['#e74c3c'])
+        
+        fig.update_layout(
+            height=400,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            showlegend=False
+        )
+        
         st.plotly_chart(fig, use_container_width=True)
     
-    # Economic indicators
-    st.subheader("💰 Economic Indicators")
+    # Economic Indicators Section - Much cleaner layout
+    st.markdown("### 💰 Economic Impact Analysis")
     
-    col1, col2, col3 = st.columns(3)
+    # Create a more organized layout for economic indicators
+    st.markdown("#### Temperature Impact on Sales")
+    col1, col2 = st.columns([2, 1])
     
     with col1:
         fig = px.scatter(raw_data, x='Temperature', y='Weekly_Sales',
                         title='Sales vs Temperature',
-                        labels={'Temperature': 'Temperature (°F)', 'Weekly_Sales': 'Weekly Sales ($)'})
+                        labels={'Temperature': 'Temperature (°F)', 'Weekly_Sales': 'Weekly Sales ($)'},
+                        color='Weekly_Sales',
+                        color_continuous_scale='Viridis',
+                        opacity=0.6)
+        
+        fig.update_layout(
+            height=400,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
+        )
+        
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
+        # Temperature correlation
+        temp_corr = raw_data['Temperature'].corr(raw_data['Weekly_Sales'])
+        st.markdown(f"""
+        <div class="chart-container">
+            <div class="metric-value">{temp_corr:.3f}</div>
+            <div class="metric-label">Temperature Correlation</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Temperature stats
+        st.markdown("**Temperature Stats:**")
+        st.write(f"• Min: {raw_data['Temperature'].min():.1f}°F")
+        st.write(f"• Max: {raw_data['Temperature'].max():.1f}°F")
+        st.write(f"• Avg: {raw_data['Temperature'].mean():.1f}°F")
+    
+    st.markdown("#### Fuel Price Impact on Sales")
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
         fig = px.scatter(raw_data, x='Fuel_Price', y='Weekly_Sales',
                         title='Sales vs Fuel Price',
-                        labels={'Fuel_Price': 'Fuel Price ($)', 'Weekly_Sales': 'Weekly Sales ($)'})
+                        labels={'Fuel_Price': 'Fuel Price ($)', 'Weekly_Sales': 'Weekly Sales ($)'},
+                        color='Weekly_Sales',
+                        color_continuous_scale='Reds',
+                        opacity=0.6)
+        
+        fig.update_layout(
+            height=400,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
+        )
+        
         st.plotly_chart(fig, use_container_width=True)
     
-    with col3:
+    with col2:
+        # Fuel price correlation
+        fuel_corr = raw_data['Fuel_Price'].corr(raw_data['Weekly_Sales'])
+        st.markdown(f"""
+        <div class="chart-container">
+            <div class="metric-value">{fuel_corr:.3f}</div>
+            <div class="metric-label">Fuel Price Correlation</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Fuel price stats
+        st.markdown("**Fuel Price Stats:**")
+        st.write(f"• Min: ${raw_data['Fuel_Price'].min():.2f}")
+        st.write(f"• Max: ${raw_data['Fuel_Price'].max():.2f}")
+        st.write(f"• Avg: ${raw_data['Fuel_Price'].mean():.2f}")
+    
+    st.markdown("#### Consumer Price Index (CPI) Impact")
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
         fig = px.scatter(raw_data, x='CPI', y='Weekly_Sales',
-                        title='Sales vs CPI',
-                        labels={'CPI': 'Consumer Price Index', 'Weekly_Sales': 'Weekly Sales ($)'})
+                        title='Sales vs Consumer Price Index',
+                        labels={'CPI': 'Consumer Price Index', 'Weekly_Sales': 'Weekly Sales ($)'},
+                        color='Weekly_Sales',
+                        color_continuous_scale='Greens',
+                        opacity=0.6)
+        
+        fig.update_layout(
+            height=400,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
+        )
+        
         st.plotly_chart(fig, use_container_width=True)
     
-    # Holiday impact
-    st.subheader("🎉 Holiday Impact")
+    with col2:
+        # CPI correlation
+        cpi_corr = raw_data['CPI'].corr(raw_data['Weekly_Sales'])
+        st.markdown(f"""
+        <div class="chart-container">
+            <div class="metric-value">{cpi_corr:.3f}</div>
+            <div class="metric-label">CPI Correlation</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # CPI stats
+        st.markdown("**CPI Stats:**")
+        st.write(f"• Min: {raw_data['CPI'].min():.1f}")
+        st.write(f"• Max: {raw_data['CPI'].max():.1f}")
+        st.write(f"• Avg: {raw_data['CPI'].mean():.1f}")
     
-    holiday_data = raw_data.groupby('Holiday_Flag')['Weekly_Sales'].mean().reset_index()
-    holiday_data['Holiday_Flag'] = holiday_data['Holiday_Flag'].map({0: 'Non-Holiday', 1: 'Holiday'})
+    # Holiday Impact Section - Much cleaner
+    st.markdown("### 🎉 Holiday Season Impact Analysis")
     
-    fig = px.bar(holiday_data, x='Holiday_Flag', y='Weekly_Sales',
-                title='Average Sales: Holiday vs Non-Holiday',
-                labels={'Weekly_Sales': 'Average Weekly Sales ($)', 'Holiday_Flag': 'Period'})
+    # Holiday comparison with better visualization
+    holiday_data = raw_data.groupby('Holiday_Flag')['Weekly_Sales'].agg(['mean', 'count', 'std']).reset_index()
+    holiday_data['Holiday_Flag'] = holiday_data['Holiday_Flag'].map({0: 'Regular Days', 1: 'Holiday Periods'})
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        fig = px.bar(holiday_data, x='Holiday_Flag', y='mean',
+                    title='Average Sales: Holiday vs Regular Days',
+                    labels={'mean': 'Average Weekly Sales ($)', 'Holiday_Flag': 'Period Type'},
+                    color='Holiday_Flag',
+                    color_discrete_sequence=['#e74c3c', '#27ae60'])
+        
+        fig.update_layout(
+            height=400,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            showlegend=False
+        )
+        
+        # Add value labels on bars
+        fig.update_traces(texttemplate='$%{y:,.0f}', textposition='outside')
+        
+        st.plotly_chart(fig, use_container_width=True)
+    
+    with col2:
+        # Holiday impact metrics
+        regular_avg = holiday_data[holiday_data['Holiday_Flag'] == 'Regular Days']['mean'].iloc[0]
+        holiday_avg = holiday_data[holiday_data['Holiday_Flag'] == 'Holiday Periods']['mean'].iloc[0]
+        impact_pct = ((holiday_avg - regular_avg) / regular_avg * 100)
+        
+        st.markdown(f"""
+        <div class="chart-container">
+            <div class="metric-value">+{impact_pct:.1f}%</div>
+            <div class="metric-label">Holiday Boost</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("**Holiday Impact:**")
+        st.write(f"• Regular Days: ${regular_avg:,.0f}")
+        st.write(f"• Holiday Periods: ${holiday_avg:,.0f}")
+        st.write(f"• Difference: ${holiday_avg - regular_avg:,.0f}")
+    
+    # Additional holiday analysis
+    st.markdown("#### Holiday Period Distribution")
+    
+    # Holiday frequency by month
+    raw_data['Month'] = raw_data['Date'].dt.month
+    holiday_by_month = raw_data.groupby(['Month', 'Holiday_Flag']).size().reset_index(name='Count')
+    holiday_by_month['Month'] = holiday_by_month['Month'].map({
+        1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr', 5: 'May', 6: 'Jun',
+        7: 'Jul', 8: 'Aug', 9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dec'
+    })
+    
+    fig = px.bar(holiday_by_month, x='Month', y='Count', color='Holiday_Flag',
+                title='Holiday Periods by Month',
+                labels={'Count': 'Number of Weeks', 'Month': 'Month'},
+                color_discrete_sequence=['#95a5a6', '#e74c3c'])
+    
+    fig.update_layout(
+        height=400,
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)'
+    )
+    
     st.plotly_chart(fig, use_container_width=True)
 
 def show_model_performance():
