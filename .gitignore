@@ -1,0 +1,105 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# Configuration (keep example, ignore actual)
+config.env
+.env.local
+.env.production
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Airflow
+.airflow/
+airflow.cfg
+airflow.db
+unittests.cfg
+webserver_config.py
+
+# MLflow
+mlflow.db
+mlruns/
+artifacts/
+
+# Spark
+spark-warehouse/
+metastore_db/
+derby.log
+
+# Delta Lake
+_delta_log/
+
+# Data (keep structure, ignore large files)
+data/delta/
+data/processed/
+outputs/
+*.parquet
+*.snappy
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Model artifacts (too large for git)
+*.pkl
+*.joblib
+*.h5
+*.pb
+
+# IDE
+*.swp
+*.swo
+*~
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
