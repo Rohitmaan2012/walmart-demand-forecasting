@@ -48,10 +48,18 @@ def main():
         uri = f"runs:/{runs[0].info.run_id}/model"
         model = mlflow.spark.load_model(uri)
 
+    # Generate predictions
     pred = model.transform(scoring).select("date","store_id",F.col("prediction").alias("forecast_sales"))
+    
+    # Group by store_id and aggregate predictions (sum all departments for each store)
+    pred_aggregated = pred.groupBy("date", "store_id").agg(
+        F.sum("forecast_sales").alias("forecast_sales")
+    )
+    
     out = f"outputs/predictions/date={latest}"
-    pred.write.mode("overwrite").parquet(out)
+    pred_aggregated.write.mode("overwrite").parquet(out)
     print("Predictions written to:", out)
+    print(f"Generated {pred_aggregated.count()} store-level predictions")
     spark.stop()
 
 if __name__ == "__main__":

@@ -252,10 +252,10 @@ def show_predictions():
     st.success(f"✅ Predictions loaded from: {pred_dir}")
     
     # Prediction metrics
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("📊 Total Predictions", len(df))
+        st.metric("📊 Total Stores", len(df))
     
     with col2:
         avg_forecast = df['forecast_sales'].mean()
@@ -264,6 +264,10 @@ def show_predictions():
     with col3:
         max_forecast = df['forecast_sales'].max()
         st.metric("📈 Max Forecast", f"${max_forecast:,.2f}")
+    
+    with col4:
+        total_forecast = df['forecast_sales'].sum()
+        st.metric("💎 Total Forecast", f"${total_forecast:,.2f}")
     
     # Predictions table
     st.subheader("📋 Prediction Details")
@@ -282,13 +286,19 @@ def show_predictions():
             st.plotly_chart(fig, use_container_width=True)
         
         with col2:
-            # Store-wise forecasts
+            # Store-wise forecasts (now properly aggregated)
             if 'store_id' in df.columns:
-                store_forecasts = df.groupby('store_id')['forecast_sales'].sum().reset_index()
-                fig = px.bar(store_forecasts, x='store_id', y='forecast_sales',
+                fig = px.bar(df, x='store_id', y='forecast_sales',
                            title='Forecast Sales by Store',
-                           labels={'store_id': 'Store ID', 'forecast_sales': 'Total Forecast Sales ($)'})
-                fig.update_layout(height=400)
+                           labels={'store_id': 'Store ID', 'forecast_sales': 'Forecast Sales ($)'},
+                           color='forecast_sales',
+                           color_continuous_scale='Blues')
+                fig.update_layout(
+                    height=400,
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    showlegend=False
+                )
                 st.plotly_chart(fig, use_container_width=True)
 
 def show_data_analysis():
